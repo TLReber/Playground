@@ -1,6 +1,6 @@
-namespace Console;
+namespace TestConsole;
 
-using System;
+using System.Threading.Tasks;
 using StackExchange.Redis;
 
 public static class SimpleRedisClient
