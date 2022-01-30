@@ -5,11 +5,7 @@ namespace Console;
 public static class SimpleChannel
 {
     private static readonly Channel<int> _channel = Channel.CreateUnbounded<int>(
-        new UnboundedChannelOptions
-        {
-            SingleReader = true,
-            SingleWriter = true
-        }
+        new() { SingleReader = true, SingleWriter = true }
     );
 
     public static async Task Produce(CancellationToken token)
@@ -17,7 +13,6 @@ public static class SimpleChannel
         while (!token.IsCancellationRequested)
         {
             var next = Random.Shared.Next(1, 5001);
-            // Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} - Writing {next,-5}");
             await _channel.Writer.WriteAsync(next, token);
 
             var delay = Random.Shared.NextDouble() * 2;
