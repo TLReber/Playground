@@ -45,25 +45,14 @@ public static class Program
             case "channel":
             {
                 Console.WriteLine("Starting simple channel operations.");
-
-                tasks = new[]
-                        {
-                            // Multiple producers.
-                            Task.Run(() => SimpleChannel.Produce(1, token), token),
-                            Task.Run(() => SimpleChannel.Produce(2, token), token),
-                            Task.Run(() => SimpleChannel.Produce(3, token), token),
-                            // Single consumer.
-                            Task.Run(() => SimpleChannel.Consume(token), token)
-                        };
+                tasks = StartSimpleChannel(5, token);
                 break;
             }
             case "redis":
             {
-                Console.WriteLine("Starting simple redis operations.");
+                Console.WriteLine($"Starting simple redis operations.");
+                tasks = StartSimpleRedis(args, token);
 
-                var redis = SimpleRedisClient.Test();
-
-                tasks = new[] { redis };
                 break;
             }
             default:
@@ -73,6 +62,34 @@ public static class Program
             }
         }
 
+        return tasks;
+    }
+
+    private static Task[] StartSimpleRedis(string[] args, CancellationToken token)
+    {
+        Task[] tasks;
+        var    kind = args.Length == 2 ? args[1] : null;
+
+        Console.WriteLine($"\tStarting redis {kind ?? "producer and consumer"}.");
+
+        tasks = kind?.ToLower() switch
+        {
+            "producer" => new[] { SimpleRedisClient.StartProducer(token) },
+            "consumer" => new[] { SimpleRedisClient.StartConsumer(token) },
+            _          => new[] { SimpleRedisClient.StartProducer(token), SimpleRedisClient.StartConsumer(token) }
+        };
+        return tasks;
+    }
+
+    private static Task[] StartSimpleChannel(int numProducers, CancellationToken token)
+    {
+        var producerTasks = Enumerable.Range(1, numProducers).Select(id =>
+            SimpleChannel.Produce(id, token)
+        );
+
+        var consumerTask = SimpleChannel.Consume(token);
+
+        var tasks = producerTasks.Concat(new[] { consumerTask }).ToArray();
         return tasks;
     }
 }
