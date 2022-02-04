@@ -37,9 +37,9 @@ public static class Program
 
     private static Task[] StartTasks(string[] args, CancellationToken token)
     {
-        var tasks = Array.Empty<Task>();
+        Task[] tasks;
+        var    cmd = args.FirstOrDefault();
 
-        var cmd = args.FirstOrDefault();
         switch (cmd?.ToLower())
         {
             case "channel":
@@ -52,32 +52,22 @@ public static class Program
             {
                 Console.WriteLine($"Starting simple redis operations.");
                 tasks = StartSimpleRedis(args, token);
-
+                break;
+            }
+            case "tasks":
+            {
+                Console.WriteLine($"Starting task operations.");
+                tasks = StartTaskLoop(30, token);
                 break;
             }
             default:
             {
-                Console.WriteLine("No task selected.");
+                Console.Error.WriteLine("No task selected.");
+                tasks = new[] { Task.CompletedTask };
                 break;
             }
         }
 
-        return tasks;
-    }
-
-    private static Task[] StartSimpleRedis(string[] args, CancellationToken token)
-    {
-        Task[] tasks;
-        var    kind = args.Length == 2 ? args[1] : null;
-
-        Console.WriteLine($"\tStarting redis {kind ?? "producer and consumer"}.");
-
-        tasks = kind?.ToLower() switch
-        {
-            "producer" => new[] { SimpleRedisClient.StartProducer(token) },
-            "consumer" => new[] { SimpleRedisClient.StartConsumer(token) },
-            _          => new[] { SimpleRedisClient.StartProducer(token), SimpleRedisClient.StartConsumer(token) }
-        };
         return tasks;
     }
 
@@ -91,5 +81,49 @@ public static class Program
 
         var tasks = producerTasks.Concat(new[] { consumerTask }).ToArray();
         return tasks;
+    }
+
+    private static Task[] StartSimpleRedis(string[] args, CancellationToken token)
+    {
+        var kind = args.Length == 2 ? args[1] : null;
+
+        Console.WriteLine($"Starting redis {kind ?? "producer and consumer"}.");
+
+        var tasks = kind?.ToLower() switch
+        {
+            "producer" => new[] { SimpleRedisClient.StartProducer(token) },
+            "consumer" => new[] { SimpleRedisClient.StartConsumer(token) },
+            _          => new[] { SimpleRedisClient.StartProducer(token), SimpleRedisClient.StartConsumer(token) }
+        };
+        return tasks;
+    }
+
+    private static Task[] StartTaskLoop(int numTasks, CancellationToken token)
+    {
+        var completed  = 0;
+        var updateFreq = 5;
+
+        Console.WriteLine($"{DateTime.Now:mm:ss.fff} - Starting now!");
+
+        var taskList = Enumerable.Range(1, numTasks).Select(taskNum => {
+            var task = Task.Run(async () => {
+                await Task.Delay(taskNum * 1000, token);
+            }, token).ContinueWith(_ => {
+                completed++;
+
+                if (completed % updateFreq == 0)
+                {
+                    Console.WriteLine($"{DateTime.Now:mm:ss.fff} - {completed,2} of {numTasks,2} done!");
+                }
+            }, token);
+
+            return task;
+        }).ToArray();
+
+        Task.WhenAll(taskList).ContinueWith(_ => {
+            Console.WriteLine($"{DateTime.Now:mm:ss.fff} - All done!");
+        }, token);
+
+        return taskList;
     }
 }

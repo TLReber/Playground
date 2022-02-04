@@ -19,6 +19,7 @@ public static class SimpleRedisClient
         while (!token.IsCancellationRequested)
         {
             await producer.PublishAsync(_channel, tick);
+            Console.WriteLine($"Wrote {tick}");
             tick++;
 
             var delay = Random.Shared.NextDouble() * 2;
