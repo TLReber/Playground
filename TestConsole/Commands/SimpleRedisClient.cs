@@ -1,6 +1,41 @@
+using Spectre.Console.Cli;
 using StackExchange.Redis;
 
 namespace TestConsole.Commands;
+
+public class RedisCommand : AsyncCommand<RedisCommandSettings>
+{
+    public override async Task<int> ExecuteAsync(CommandContext context, RedisCommandSettings settings)
+    {
+        var tasks = new List<Task>(2);
+
+        if (settings.Consumer.HasValue)
+        {
+            Console.WriteLine($"Starting redis producer.");
+
+            var producerTask = SimpleRedisClient.StartProducer(Program.Token);
+            tasks.Add(producerTask);
+        }
+
+        if (settings.Producer.HasValue)
+        {
+            Console.WriteLine($"Starting redis consumer.");
+
+            var consumerTask = SimpleRedisClient.StartConsumer(Program.Token);
+            tasks.Add(consumerTask);
+        }
+
+        await Task.WhenAll(tasks);
+        return 0;
+    }
+}
+
+public class RedisCommandSettings : CommandSettings
+{
+    [CommandOption("-p")] public bool? Producer { get; init; }
+
+    [CommandOption("-c")] public bool? Consumer { get; init; }
+}
 
 public static class SimpleRedisClient
 {
@@ -10,22 +45,7 @@ public static class SimpleRedisClient
         new ConfigurationOptions { EndPoints = { "localhost:6379" } }
     );
 
-    public static Task[] StartSimpleRedis(string[] args, CancellationToken token)
-    {
-        var kind = args.Length == 2 ? args[1] : null;
-
-        Console.WriteLine($"Starting redis {kind ?? "producer and consumer"}.");
-
-        var tasks = kind?.ToLower() switch
-        {
-            "producer" => new[] { StartProducer(token) },
-            "consumer" => new[] { StartConsumer(token) },
-            _          => new[] { StartProducer(token), StartConsumer(token) }
-        };
-        return tasks;
-    }
-
-    private static async Task StartProducer(CancellationToken token)
+    internal static async Task StartProducer(CancellationToken token)
     {
         var producer = _redis.GetSubscriber();
 
@@ -41,7 +61,7 @@ public static class SimpleRedisClient
         }
     }
 
-    private static async Task StartConsumer(CancellationToken token)
+    internal static async Task StartConsumer(CancellationToken token)
     {
         var subscriber = _redis.GetSubscriber();
 

@@ -1,74 +1,95 @@
 ﻿global using System;
+using Spectre.Console;
+using Spectre.Console.Cli;
 using TestConsole.Commands;
 
 namespace TestConsole;
 
 public static class Program
 {
-    public static async Task Main(string[] args)
+    private static readonly CancellationTokenSource _cts;
+    public static readonly  CancellationToken       Token;
+
+    static Program()
     {
-        var cts   = new CancellationTokenSource();
-        var token = cts.Token;
+        _cts  = new CancellationTokenSource();
+        Token = _cts.Token;
+    }
 
-        var tasks = StartTasks(args, token);
+    public static async Task<int> Main(string[] args)
+    {
+        var app = new CommandApp();
+        app.Configure(config => {
+            config.AddCommand<RedisCommand>("redis");
 
-        while (!token.IsCancellationRequested)
+            config.PropagateExceptions();
+        });
+
+        var appTask = app.RunAsync(args);
+
+        while (!Token.IsCancellationRequested)
         {
             var input = Console.ReadLine();
             if (input?.ToLower() == "q")
             {
-                cts.Cancel();
+                _cts.Cancel();
             }
 
             try
             {
-                await Task.Delay(1000, cts.Token);
+                await Task.Delay(1000, Token);
             }
             catch (TaskCanceledException) { }
         }
 
         try
         {
-            await Task.WhenAll(tasks);
+            var retCode = await appTask;
+            return retCode;
         }
-        catch (TaskCanceledException) { }
+        catch (TaskCanceledException) //  when (ex.CancellationToken == Token)
+        {
+            AnsiConsole.MarkupLine("[red dim underline]Manual cancellation received.[/]");
+            return 0;
+        }
 
-        Console.WriteLine("Goodbye!");
+        return -1;
     }
 
+    /*
     private static Task[] StartTasks(string[] args, CancellationToken token)
     {
-        Task[] tasks;
-        var    cmd = args.FirstOrDefault();
-
-        switch (cmd?.ToLower())
+    Task[] tasks;
+    var    cmd = args.FirstOrDefault();
+    
+    switch (cmd?.ToLower())
+    {
+        case "channel":
         {
-            case "channel":
-            {
-                Console.WriteLine("Starting simple channel operations.");
-                tasks = SimpleChannel.StartSimpleChannel(5, token);
-                break;
-            }
-            case "redis":
-            {
-                Console.WriteLine($"Starting simple redis operations.");
-                tasks = SimpleRedisClient.StartSimpleRedis(args, token);
-                break;
-            }
-            case "tasks":
-            {
-                Console.WriteLine($"Starting task operations.");
-                tasks = SimpleLoop.StartTaskLoop(30, token);
-                break;
-            }
-            default:
-            {
-                Console.Error.WriteLine("No task selected.");
-                tasks = new[] { Task.CompletedTask };
-                break;
-            }
+            Console.WriteLine("Starting simple channel operations.");
+            tasks = SimpleChannel.StartSimpleChannel(5, token);
+            break;
         }
-
-        return tasks;
+        case "redis":
+        {
+            Console.WriteLine($"Starting simple redis operations.");
+            tasks = SimpleRedisClient.StartSimpleRedis(args, token);
+            break;
+        }
+        case "tasks":
+        {
+            Console.WriteLine($"Starting task operations.");
+            tasks = SimpleLoop.StartTaskLoop(30, token);
+            break;
+        }
+        default:
+        {
+            Console.Error.WriteLine("No task selected.");
+            tasks = new[] { Task.CompletedTask };
+            break;
+        }
     }
+    
+    return tasks;
+    */
 }
