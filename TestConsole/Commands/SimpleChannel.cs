@@ -1,6 +1,6 @@
-namespace TestConsole;
-
 using System.Threading.Channels;
+
+namespace TestConsole.Commands;
 
 public static class SimpleChannel
 {
@@ -11,7 +11,19 @@ public static class SimpleChannel
         _channel = Channel.CreateUnbounded<(int id, int tid, int val)>();
     }
 
-    public static async Task Produce(int id, CancellationToken token)
+    public static Task[] StartSimpleChannel(int numProducers, CancellationToken token)
+    {
+        var producerTasks = Enumerable.Range(1, numProducers).Select(id =>
+            Produce(id, token)
+        );
+
+        var consumerTask = Consume(token);
+
+        var tasks = producerTasks.Concat(new[] { consumerTask }).ToArray();
+        return tasks;
+    }
+
+    private static async Task Produce(int id, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
@@ -24,7 +36,7 @@ public static class SimpleChannel
         }
     }
 
-    public static async Task Consume(CancellationToken token)
+    private static async Task Consume(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {

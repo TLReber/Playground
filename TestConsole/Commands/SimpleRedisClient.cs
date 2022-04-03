@@ -1,7 +1,6 @@
-namespace TestConsole;
-
-using System.Threading.Tasks;
 using StackExchange.Redis;
+
+namespace TestConsole.Commands;
 
 public static class SimpleRedisClient
 {
@@ -11,7 +10,22 @@ public static class SimpleRedisClient
         new ConfigurationOptions { EndPoints = { "localhost:6379" } }
     );
 
-    public static async Task StartProducer(CancellationToken token)
+    public static Task[] StartSimpleRedis(string[] args, CancellationToken token)
+    {
+        var kind = args.Length == 2 ? args[1] : null;
+
+        Console.WriteLine($"Starting redis {kind ?? "producer and consumer"}.");
+
+        var tasks = kind?.ToLower() switch
+        {
+            "producer" => new[] { StartProducer(token) },
+            "consumer" => new[] { StartConsumer(token) },
+            _          => new[] { StartProducer(token), StartConsumer(token) }
+        };
+        return tasks;
+    }
+
+    private static async Task StartProducer(CancellationToken token)
     {
         var producer = _redis.GetSubscriber();
 
@@ -27,7 +41,7 @@ public static class SimpleRedisClient
         }
     }
 
-    public static async Task StartConsumer(CancellationToken token)
+    private static async Task StartConsumer(CancellationToken token)
     {
         var subscriber = _redis.GetSubscriber();
 
