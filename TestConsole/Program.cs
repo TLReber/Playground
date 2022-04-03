@@ -21,6 +21,8 @@ public static class Program
         var app = new CommandApp();
         app.Configure(config => {
             config.AddCommand<RedisCommand>("redis");
+            config.AddCommand<ChannelCommand>("channel");
+            config.AddCommand<LoopCommand>("loop");
 
             config.PropagateExceptions();
         });
@@ -47,49 +49,16 @@ public static class Program
             var retCode = await appTask;
             return retCode;
         }
-        catch (TaskCanceledException) //  when (ex.CancellationToken == Token)
+        catch (TaskCanceledException ex) when (ex.CancellationToken == Token)
         {
-            AnsiConsole.MarkupLine("[red dim underline]Manual cancellation received.[/]");
+            AnsiConsole.MarkupLine("[red]Manual cancellation received.[/]");
             return 0;
         }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed for unknown reason.\n{ex}");
 
-        return -1;
-    }
-
-    /*
-    private static Task[] StartTasks(string[] args, CancellationToken token)
-    {
-    Task[] tasks;
-    var    cmd = args.FirstOrDefault();
-    
-    switch (cmd?.ToLower())
-    {
-        case "channel":
-        {
-            Console.WriteLine("Starting simple channel operations.");
-            tasks = SimpleChannel.StartSimpleChannel(5, token);
-            break;
-        }
-        case "redis":
-        {
-            Console.WriteLine($"Starting simple redis operations.");
-            tasks = SimpleRedisClient.StartSimpleRedis(args, token);
-            break;
-        }
-        case "tasks":
-        {
-            Console.WriteLine($"Starting task operations.");
-            tasks = SimpleLoop.StartTaskLoop(30, token);
-            break;
-        }
-        default:
-        {
-            Console.Error.WriteLine("No task selected.");
-            tasks = new[] { Task.CompletedTask };
-            break;
+            return -1;
         }
     }
-    
-    return tasks;
-    */
 }

@@ -1,8 +1,28 @@
+using System.ComponentModel;
 using System.Threading.Channels;
+using Spectre.Console.Cli;
 
 namespace TestConsole.Commands;
 
-public static class SimpleChannel
+public class ChannelCommand : AsyncCommand<ChannelCommandSettings>
+{
+    public override async Task<int> ExecuteAsync(CommandContext context, ChannelCommandSettings settings)
+    {
+        var channelTasks = SimpleChannel.StartSimpleChannel(settings.NumProducers, Program.Token);
+        await Task.WhenAll(channelTasks);
+
+        return 0;
+    }
+}
+
+public class ChannelCommandSettings : CommandSettings
+{
+    [CommandOption("-p|--producers")]
+    [DefaultValue(1)]
+    public int NumProducers { get; init; }
+}
+
+internal static class SimpleChannel
 {
     private static readonly Channel<(int id, int tid, int val)> _channel;
 

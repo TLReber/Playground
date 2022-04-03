@@ -1,6 +1,27 @@
-namespace TestConsole;
+using System.ComponentModel;
+using Spectre.Console.Cli;
 
-public static class SimpleLoop
+namespace TestConsole.Commands;
+
+public class LoopCommand : AsyncCommand<LoopCommandSettings>
+{
+    public override async Task<int> ExecuteAsync(CommandContext context, LoopCommandSettings settings)
+    {
+        var channelTasks = SimpleLoop.StartTaskLoop(settings.NumTasks, Program.Token);
+        await Task.WhenAll(channelTasks);
+
+        return 0;
+    }
+}
+
+public class LoopCommandSettings : CommandSettings
+{
+    [CommandOption("-t|--tasks")]
+    [DefaultValue(30)]
+    public int NumTasks { get; init; }
+}
+
+internal static class SimpleLoop
 {
     public static Task[] StartTaskLoop(int numTasks, CancellationToken token)
     {

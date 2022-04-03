@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Spectre.Console.Cli;
 using StackExchange.Redis;
+using ValidationResult = Spectre.Console.ValidationResult;
 
 namespace TestConsole.Commands;
 
@@ -35,9 +37,19 @@ public class RedisCommandSettings : CommandSettings
     [CommandOption("-p")] public bool? Producer { get; init; }
 
     [CommandOption("-c")] public bool? Consumer { get; init; }
+
+    public override ValidationResult Validate()
+    {
+        if (!Producer.HasValue && !Consumer.HasValue)
+        {
+            throw new ValidationException("Must be consumer, producer, or both.");
+        }
+
+        return base.Validate();
+    }
 }
 
-public static class SimpleRedisClient
+internal static class SimpleRedisClient
 {
     private static readonly string _channel = "tick";
 
