@@ -9,13 +9,15 @@ public class RedisCommand : AsyncCommand<RedisCommandSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, RedisCommandSettings settings)
     {
+        var token = context.CastData<CancellationToken>();
+
         var tasks = new List<Task>(2);
 
         if (settings.Consumer.HasValue)
         {
             Console.WriteLine($"Starting redis producer.");
 
-            var producerTask = SimpleRedisClient.StartProducer(Program.Token);
+            var producerTask = SimpleRedisClient.StartProducer(token);
             tasks.Add(producerTask);
         }
 
@@ -23,7 +25,7 @@ public class RedisCommand : AsyncCommand<RedisCommandSettings>
         {
             Console.WriteLine($"Starting redis consumer.");
 
-            var consumerTask = SimpleRedisClient.StartConsumer(Program.Token);
+            var consumerTask = SimpleRedisClient.StartConsumer(token);
             tasks.Add(consumerTask);
         }
 

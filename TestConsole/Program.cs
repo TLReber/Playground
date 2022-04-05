@@ -7,58 +7,41 @@ namespace TestConsole;
 
 public static class Program
 {
-    private static readonly CancellationTokenSource _cts;
-    public static readonly  CancellationToken       Token;
-
-    static Program()
-    {
-        _cts  = new CancellationTokenSource();
-        Token = _cts.Token;
-    }
-
     public static async Task<int> Main(string[] args)
     {
+        var cts   = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var token = cts.Token;
+
         var app = new CommandApp();
         app.Configure(config => {
-            config.AddCommand<RedisCommand>("redis");
-            config.AddCommand<ChannelCommand>("channel");
-            config.AddCommand<LoopCommand>("loop");
+            config.AddCommand<RedisCommand>("redis")
+                  .WithData(token)
+                  .WithExample(new[] { "redis", "-p" });
+
+            config.AddCommand<ChannelCommand>("channel")
+                  .WithData(token)
+                  .WithExample(new[] { "redis", "-p", "4" });
+
+            config.AddCommand<LoopCommand>("loop")
+                  .WithData(token)
+                  .WithExample(new[] { "loop", "-t", "15" });
 
             config.PropagateExceptions();
         });
 
-        var appTask = app.RunAsync(args);
-
-        while (!Token.IsCancellationRequested)
-        {
-            var input = Console.ReadLine();
-            if (input?.ToLower() == "q")
-            {
-                _cts.Cancel();
-            }
-
-            try
-            {
-                await Task.Delay(1000, Token);
-            }
-            catch (TaskCanceledException) { }
-        }
-
         try
         {
-            var retCode = await appTask;
+            var retCode = await app.RunAsync(args);
             return retCode;
         }
-        catch (TaskCanceledException ex) when (ex.CancellationToken == Token)
+        catch (OperationCanceledException)
         {
-            AnsiConsole.MarkupLine("[red]Manual cancellation received.[/]");
+            AnsiConsole.MarkupLine("[red bold]Timed out.[/]");
             return 0;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.Error.WriteLine($"Failed for unknown reason.\n{ex}");
-
-            return -1;
+            return 1;
         }
     }
 }

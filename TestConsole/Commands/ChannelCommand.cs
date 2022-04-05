@@ -8,7 +8,9 @@ public class ChannelCommand : AsyncCommand<ChannelCommandSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, ChannelCommandSettings settings)
     {
-        var channelTasks = SimpleChannel.StartSimpleChannel(settings.NumProducers, Program.Token);
+        var token = context.CastData<CancellationToken>();
+        
+        var channelTasks = SimpleChannel.StartSimpleChannel(settings.NumProducers, token);
         await Task.WhenAll(channelTasks);
 
         return 0;

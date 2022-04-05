@@ -7,7 +7,9 @@ public class LoopCommand : AsyncCommand<LoopCommandSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, LoopCommandSettings settings)
     {
-        var channelTasks = SimpleLoop.StartTaskLoop(settings.NumTasks, Program.Token);
+        var token = context.CastData<CancellationToken>();
+        
+        var channelTasks = SimpleLoop.StartTaskLoop(settings.NumTasks, token);
         await Task.WhenAll(channelTasks);
 
         return 0;
